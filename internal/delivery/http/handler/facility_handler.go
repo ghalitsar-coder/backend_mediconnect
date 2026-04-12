@@ -1,56 +1,42 @@
 package handler
 
 import (
-	"net/http"
-
-	"mediconnect/internal/domain"
-	"mediconnect/pkg/response"
+  "net/http"
+  "mediconnect/internal/domain"
+  "mediconnect/pkg/response"
+  "github.com/gin-gonic/gin"
 )
 
-// FacilityHandler handles HTTP requests related to healthcare facilities.
 type FacilityHandler struct {
-	facilityUsecase domain.FacilityUsecase
+  facilityUsecase domain.FacilityUsecase
 }
 
-// NewFacilityHandler wires a FacilityHandler with its usecase dependency.
 func NewFacilityHandler(uc domain.FacilityUsecase) *FacilityHandler {
-	return &FacilityHandler{facilityUsecase: uc}
+  return &FacilityHandler{facilityUsecase: uc}
 }
 
-// GetFacilities godoc
-//
-//	@Summary      List healthcare facilities
-//	@Description  Returns a filterable list of active Puskesmas and Klinik
-//	@Tags         facilities
-//	@Produce      json
-//	@Param        district  query  string  false  "BPS district code"
-//	@Param        type      query  string  false  "Facility type (PUSKESMAS | KLINIK)"
-//	@Success      200  {array}   domain.Facility
-//	@Failure      500  {object}  response.APIResponse
-//	@Router       /api/v1/facilities [get]
-func (h *FacilityHandler) GetFacilities(w http.ResponseWriter, r *http.Request) {
-	filter := domain.FacilityFilter{
-		DistrictID: r.URL.Query().Get("district"),
-		Type:       r.URL.Query().Get("type"),
-	}
+func (h *FacilityHandler) GetFacilities(c *gin.Context) {
+  filter := domain.FacilityFilter{
+      DistrictID: c.Query("district"),
+      Type:       c.Query("type"),
+  }
 
-	facilities, err := h.facilityUsecase.GetFacilities(r.Context(), filter)
-	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "Failed to retrieve facilities")
-		return
-	}
+  facilities, err := h.facilityUsecase.GetFacilities(c.Request.Context(), filter)
+  if err != nil {
+      response.Error(c, http.StatusInternalServerError, "Failed to retrieve facilities")
+      return
+  }
 
-	if facilities == nil {
-		facilities = []domain.Facility{} // always return an array, never null
-	}
+  if facilities == nil || len(facilities) == 0 {
+      facilities = []domain.Facility{}
+  }
 
-	response.Success(w, http.StatusOK, "Facilities retrieved successfully", facilities)
+  response.Success(c, http.StatusOK, "Facilities retrieved successfully", facilities)
 }
 
-// HealthHandler returns the API liveness status.
-func HealthHandler(w http.ResponseWriter, r *http.Request) {
-	response.Success(w, http.StatusOK, "MediConnect API v1 is up and running", map[string]string{
-		"version": "1.0.0",
-		"status":  "ok",
-	})
+func HealthHandler(c *gin.Context) {
+  response.Success(c, http.StatusOK, "MediConnect API v1 is up and running", map[string]string{
+      "version": "1.0.0",
+      "status":  "ok",
+  })
 }

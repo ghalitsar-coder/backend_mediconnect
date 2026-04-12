@@ -1,39 +1,52 @@
 package http
 
 import (
-	"github.com/go-chi/chi/v5"
-	chimw "github.com/go-chi/chi/v5/middleware"
-
 	"mediconnect/internal/delivery/http/handler"
-	"mediconnect/internal/delivery/http/middleware"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
-// NewRouter constructs the chi router with all middleware and routes registered.
-func NewRouter(facilityHandler *handler.FacilityHandler, authHandler *handler.AuthHandler) *chi.Mux {
-	r := chi.NewRouter()
+func SetupRouter(
+	authHandler *handler.AuthHandler,
+	facilityHandler *handler.FacilityHandler,
+	bookingHandler *handler.BookingHandler,
+  doctorHandler *handler.DoctorHandler,
 
-	// ── Global Middleware Stack ──────────────────────────────────────────────
-	r.Use(chimw.RequestID) // inject X-Request-Id header
-	r.Use(chimw.RealIP)    // trust X-Real-IP / X-Forwarded-For
-	r.Use(chimw.Logger)    // structured request logging
-	r.Use(chimw.Recoverer) // recover from panics, return 500
+	// Setup CORS
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept"}
+	config.AllowCredentials = true
+	router.Use(cors.New(config))
 
-	// ── Routes ──────────────────────────────────────────────────────────────
-	r.Get("/api/v1/health", handler.HealthHandler)
+	api := router.Group("/api/v1")
+	{
+		api.GET("/health", handler.HealthHandler)
 
-	r.Route("/api/v1", func(r chi.Router) {
-		// Public Auth Routes
-		r.Post("/auth/register", authHandler.Register)
-		r.Post("/auth/login", authHandler.Login)
-		r.Post("/auth/logout", authHandler.Logout)
+		auth := api.Group("/auth")
+		{
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/register", authHandler.Register)
+		}
 
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.JWTAuth) // authentication layer
+		facilities := api.Group("/facilities")
+		{
+			facilities.GET("", facilityHandler.GetFacilities)
+		}
 
-			// Facilities (Protected if you want, or put outside this group if public)
-			r.Get("/facilities", facilityHandler.GetFacilities)
-		})
-	})
+		doctors := api.Group("/doctors")
+		{
+			doctors.GET("", doctorHandler.GetDoctors)
+		}
 
-	return r
+		bookings := api.Group("/bookings")
+		bookings.Use(authMiddleware)
+		{
+			bookings.POST("", bookingHandler.CreateBooking)
+		}
+	}
+
+	return router
 }

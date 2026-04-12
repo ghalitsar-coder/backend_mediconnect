@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build the executable
-RUN CGO_ENABLED=0 GOOS=linux go build -o mediconnect-backend .
+RUN CGO_ENABLED=0 GOOS=linux go build -o mediconnect-backend ./cmd/server/main.go
 
 # Stage 2: Run the application
 FROM alpine:latest

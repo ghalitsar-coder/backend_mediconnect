@@ -1,61 +1,32 @@
 package postgres
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"mediconnect/internal/domain"
+  "context"
+  "mediconnect/internal/domain"
+  "gorm.io/gorm"
 )
 
-type facilityRepository struct {
-	db *pgxpool.Pool
+type FacilityRepository struct {
+  db *gorm.DB
 }
 
-// NewFacilityRepository returns a domain.FacilityRepository backed by PostgreSQL.
-func NewFacilityRepository(db *pgxpool.Pool) domain.FacilityRepository {
-	return &facilityRepository{db: db}
+func NewFacilityRepository(db *gorm.DB) domain.FacilityRepository {
+  return &FacilityRepository{db: db}
 }
 
-func (r *facilityRepository) GetFacilities(ctx context.Context, filter domain.FacilityFilter) ([]domain.Facility, error) {
-	query := `
-		SELECT id, name, address, lat, lng, type, district_id, is_active, created_at, updated_at
-		FROM   facilities
-		WHERE  is_active = true`
-
-	var args []any
-
-	if filter.DistrictID != "" {
-		args = append(args, filter.DistrictID)
-		query += fmt.Sprintf(" AND district_id = $%d", len(args))
-	}
-	if filter.Type != "" {
-		args = append(args, filter.Type)
-		query += fmt.Sprintf(" AND type = $%d", len(args))
-	}
-
-	rows, err := r.db.Query(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query facilities: %w", err)
-	}
-	defer rows.Close()
-
-	var facilities []domain.Facility
-	for rows.Next() {
-		var f domain.Facility
-		if err := rows.Scan(
-			&f.ID, &f.Name, &f.Address, &f.Lat, &f.Lng,
-			&f.Type, &f.DistrictID, &f.IsActive,
-			&f.CreatedAt, &f.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan facility row: %w", err)
-		}
-		facilities = append(facilities, f)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate facility rows: %w", err)
-	}
-
-	return facilities, nil
+func (r *FacilityRepository) GetFacilities(ctx context.Context, filter domain.FacilityFilter) ([]domain.Facility, error) {
+  var facilities []domain.Facility
+  query := r.db.WithContext(ctx).Table("facilities")
+  
+  if filter.Type != "" {
+    query = query.Where("type = ?", filter.Type)
+  }
+  if filter.DistrictID != "" {
+    query = query.Where("district_id = ?", filter.DistrictID)
+  }
+  
+  if err := query.Find(&facilities).Error; err != nil {
+    return nil, err
+  }
+  return facilities, nil
 }

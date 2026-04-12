@@ -1,73 +1,88 @@
 package main
 
 import (
-	"log/slog"
+	"context"
+	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"time"
 
 	"mediconnect/config"
-	httpdelivery "mediconnect/internal/delivery/http"
+	httpDelivery "mediconnect/internal/delivery/http"
 	"mediconnect/internal/delivery/http/handler"
-	pgRepo "mediconnect/internal/repository/postgres"
+	"mediconnect/internal/delivery/http/middleware"
+	"mediconnect/internal/repository/postgres"
 	"mediconnect/internal/usecase"
 	"mediconnect/pkg/database"
-	"mediconnect/pkg/logger"
+	pkgLogger "mediconnect/pkg/logger"
 	"mediconnect/pkg/messaging"
 )
 
 func main() {
-	// ── Configuration ────────────────────────────────────────────────────────
+	// Load Configuration
 	cfg := config.LoadConfig()
 
-	// ── Logger ───────────────────────────────────────────────────────────────
-	logger.Init(cfg.AppEnv)
-	slog.Info("Booting MediConnect API", "env", cfg.AppEnv, "port", cfg.ServerPort)
+	// Initialize Logger
+	pkgLogger.Init(cfg.AppEnv)
 
-	// ── Infrastructure ───────────────────────────────────────────────────────
+	// Connect Database (GORM)
 	db, err := database.ConnectPostgres(cfg.DBURL)
 	if err != nil {
-		slog.Error("PostgreSQL connection failed", "error", err)
-		os.Exit(1)
+		log.Fatalf("Failed to connect database: %v\n", err)
 	}
-	defer db.Close()
 
-	redisClient, err := database.ConnectRedis(cfg.RedisURL)
+	// Connect RabbitMQ
+	rabbit, err := messaging.ConnectRabbitMQ(cfg.RabbitMQURL)
 	if err != nil {
-		slog.Error("Redis connection failed", "error", err)
-		os.Exit(1)
+		log.Fatalf("Failed to connect RabbitMQ: %v\n", err)
 	}
-	defer redisClient.Close()
 
-	mq, err := messaging.ConnectRabbitMQ(cfg.RabbitMQURL)
-	if err != nil {
-		slog.Error("RabbitMQ connection failed", "error", err)
-		os.Exit(1)
+	// Initialize Repositories
+	authRepo := postgres.NewAuthRepository(db)
+	facilityRepo := postgres.NewFacilityRepository(db)
+	bookingRepo := postgres.NewBookingRepository(db)
+  doctorRepo := postgres.NewDoctorRepository(db)
+
+  // Initialize Usecases
+  authUsecase := usecase.NewAuthUsecase(authRepo, "mysecret") // Ideally from config
+  facilityUsecase := usecase.NewFacilityUsecase(facilityRepo)
+  bookingUsecase := usecase.NewBookingUsecase(bookingRepo, rabbit)
+  doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
+
+  // Initialize Handlers
+  authHandler := handler.NewAuthHandler(authUsecase)
+  facilityHandler := handler.NewFacilityHandler(facilityUsecase)
+  bookingHandler := handler.NewBookingHandler(bookingUsecase)
+  doctorHandler := handler.NewDoctorHandler(doctorUsecase)
+
+  // Initialize Middleware
+  authMiddleware := middleware.JWTAuth
+
+  // Setup Router
+  router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler, authMiddleware)
+		Handler: router,
 	}
-	defer mq.Close()
 
-	// ── Dependency Injection ─────────────────────────────────────────────────
-	//  Repository layer
-	facilityRepo := pgRepo.NewFacilityRepository(db)
-	authRepo := pgRepo.NewAuthRepository(db)
+	go func() {
+		log.Printf("Starting Mediconnect server on port %s\n", cfg.ServerPort)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Listen and Serve error: %v\n", err)
+		}
+	}()
 
-	//  Usecase layer
-	facilityUC := usecase.NewFacilityUsecase(facilityRepo)
-	// Add your own secret key securely in prod (from env variable)
-	jwtSecret := "supersecretkey"
-	authUC := usecase.NewAuthUsecase(authRepo, jwtSecret)
+	// Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	log.Println("Shutting down server...")
 
-	//  Handler layer
-	facilityHandler := handler.NewFacilityHandler(facilityUC)
-	authHandler := handler.NewAuthHandler(authUC)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// ── HTTP Server ──────────────────────────────────────────────────────────
-	router := httpdelivery.NewRouter(facilityHandler, authHandler)
-
-	addr := ":" + cfg.ServerPort
-	slog.Info("MediConnect API is ready", "addr", addr)
-
-	if err := http.ListenAndServe(addr, router); err != nil {
-		slog.Error("Server stopped unexpectedly", "error", err)
-		os.Exit(1)
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
 	}
+
+	log.Println("Server exiting")
 }
