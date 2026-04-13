@@ -11,7 +11,6 @@ import (
 	"mediconnect/config"
 	httpDelivery "mediconnect/internal/delivery/http"
 	"mediconnect/internal/delivery/http/handler"
-	"mediconnect/internal/delivery/http/middleware"
 	"mediconnect/internal/repository/postgres"
 	"mediconnect/internal/usecase"
 	"mediconnect/pkg/database"
@@ -56,13 +55,13 @@ func main() {
   bookingHandler := handler.NewBookingHandler(bookingUsecase)
   doctorHandler := handler.NewDoctorHandler(doctorUsecase)
 
-  // Initialize Middleware
-  authMiddleware := middleware.JWTAuth
-
   // Setup Router
-  router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler, authMiddleware)
-		Handler: router,
-	}
+  router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler)
+
+  srv := &http.Server{
+      Addr:    ":" + cfg.ServerPort,
+      Handler: router,
+  }
 
 	go func() {
 		log.Printf("Starting Mediconnect server on port %s\n", cfg.ServerPort)

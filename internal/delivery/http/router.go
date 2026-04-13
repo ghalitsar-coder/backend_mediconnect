@@ -2,6 +2,7 @@ package http
 
 import (
 	"mediconnect/internal/delivery/http/handler"
+	"mediconnect/internal/delivery/http/middleware"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,9 @@ func SetupRouter(
 	authHandler *handler.AuthHandler,
 	facilityHandler *handler.FacilityHandler,
 	bookingHandler *handler.BookingHandler,
-  doctorHandler *handler.DoctorHandler,
+	doctorHandler *handler.DoctorHandler) *gin.Engine {
+
+	router := gin.Default()
 
 	// Setup CORS
 	config := cors.DefaultConfig()
@@ -42,7 +45,7 @@ func SetupRouter(
 		}
 
 		bookings := api.Group("/bookings")
-		bookings.Use(authMiddleware)
+		bookings.Use(middleware.JWTAuth)
 		{
 			bookings.POST("", bookingHandler.CreateBooking)
 		}

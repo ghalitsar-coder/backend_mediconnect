@@ -23,9 +23,9 @@ func (h *DoctorHandler) GetDoctors(c *gin.Context) {
 
 	doctors, err := h.usecase.GetDoctors(c.Request.Context(), facilityID, poliName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.ErrorResponse("Failed fetching doctors"))
+		response.Error(c, http.StatusInternalServerError, "Failed fetching doctors")
 		return
 	}
 
-	c.JSON(http.StatusOK, response.SuccessResponse("Doctors retrieved successfully", doctors))
+	response.Success(c, http.StatusOK, "Doctors retrieved successfully", doctors)
 }

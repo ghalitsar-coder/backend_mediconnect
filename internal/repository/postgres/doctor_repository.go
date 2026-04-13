@@ -20,7 +20,7 @@ func (r *DoctorRepository) GetDoctors(ctx context.Context, facilityID string, po
 
 	query := r.db.WithContext(ctx).
 		Table("doctors d").
-		Select("d.id, d.facility_id, u.full_name as name, d.speciality as specialization, 'Poli ' || d.speciality as poli_name, 4.5 as rating, 120 as patients_count").
+		Select("d.id, d.facility_id, u.full_name as name, d.speciality as specialization, d.speciality as poli_name, 4.5 as rating, 120 as patients_count").
 		Joins("JOIN users u ON d.user_id = u.id").
 		Where("d.is_active = ?", true)
 
@@ -28,8 +28,9 @@ func (r *DoctorRepository) GetDoctors(ctx context.Context, facilityID string, po
 		query = query.Where("d.facility_id = ?", facilityID)
 	}
 
-	// Assuming poliName matches specialization or we mock it. The query needs adaptation based on actual DB structure.
-	// For now, we fetch base on facility.
+	if poliName != "" {
+		query = query.Where("d.speciality = ?", poliName)
+	}
 
 	if err := query.Find(&doctors).Error; err != nil {
 		return nil, err
