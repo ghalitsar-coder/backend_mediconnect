@@ -66,7 +66,7 @@ func main() {
 			// Insert doctor
 			newDocID := uuid.New().String()
 			sip := fmt.Sprintf("SIP/%d/2026", rand.Intn(9999))
-			
+
 			if err := db.Exec(`
 				INSERT INTO doctors (id, user_id, facility_id, speciality, sip_number)
 				VALUES (?, ?, ?, ?, ?)
@@ -81,4 +81,3 @@ func main() {
 
 	fmt.Println("Doctor injection completed!")
 }
-

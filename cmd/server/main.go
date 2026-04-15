@@ -41,27 +41,27 @@ func main() {
 	authRepo := postgres.NewAuthRepository(db)
 	facilityRepo := postgres.NewFacilityRepository(db)
 	bookingRepo := postgres.NewBookingRepository(db)
-  doctorRepo := postgres.NewDoctorRepository(db)
+	doctorRepo := postgres.NewDoctorRepository(db)
 
-  // Initialize Usecases
-  authUsecase := usecase.NewAuthUsecase(authRepo, "mysecret") // Ideally from config
-  facilityUsecase := usecase.NewFacilityUsecase(facilityRepo)
-  bookingUsecase := usecase.NewBookingUsecase(bookingRepo, rabbit)
-  doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
+	// Initialize Usecases
+	authUsecase := usecase.NewAuthUsecase(authRepo, "mysecret") // Ideally from config
+	facilityUsecase := usecase.NewFacilityUsecase(facilityRepo)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, rabbit)
+	doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
 
-  // Initialize Handlers
-  authHandler := handler.NewAuthHandler(authUsecase)
-  facilityHandler := handler.NewFacilityHandler(facilityUsecase)
-  bookingHandler := handler.NewBookingHandler(bookingUsecase)
-  doctorHandler := handler.NewDoctorHandler(doctorUsecase)
+	// Initialize Handlers
+	authHandler := handler.NewAuthHandler(authUsecase)
+	facilityHandler := handler.NewFacilityHandler(facilityUsecase)
+	bookingHandler := handler.NewBookingHandler(bookingUsecase)
+	doctorHandler := handler.NewDoctorHandler(doctorUsecase)
 
-  // Setup Router
-  router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler)
+	// Setup Router
+	router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler)
 
-  srv := &http.Server{
-      Addr:    ":" + cfg.ServerPort,
-      Handler: router,
-  }
+	srv := &http.Server{
+		Addr:    ":" + cfg.ServerPort,
+		Handler: router,
+	}
 
 	go func() {
 		log.Printf("Starting Mediconnect server on port %s\n", cfg.ServerPort)
