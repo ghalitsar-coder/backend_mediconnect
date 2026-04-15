@@ -9,7 +9,7 @@ COVER_OUT  := coverage.out
 
 .PHONY: all run build test lint fmt tidy \
         docker-up docker-down docker-build \
-        migrate clean help
+        migrate seed clean help
 
 ## ── Development ──────────────────────────────────────────────────────────────
 
@@ -51,12 +51,20 @@ docker-build: ## Build only the app Docker image
 
 ## ── Database ─────────────────────────────────────────────────────────────────
 
-migrate: ## Apply SQL migrations to the running mediconnect-db container
-	@echo "Applying migrations/001_init_schema.sql …"
-	docker exec -i mediconnect-db \
-		psql -U mediconnect_user -d mediconnect_db \
-		< migrations/001_init_schema.sql
-	@echo "Migration complete."
+migrate: ## Apply ALL SQL migrations (migrations/*.sql) in order to mediconnect-db
+	@echo ">>> Running all migrations in migrations/ ..."
+	@for f in $(sort $(wildcard migrations/*.sql)); do \
+		echo "  Applying $$f ..."; \
+		docker exec -i mediconnect-db \
+			psql -U mediconnect_user -d mediconnect_db \
+			< $$f || exit 1; \
+	 done
+	@echo "✅ All migrations complete."
+
+seed: ## Run Go seeder to populate the database with sample data
+	@echo ">>> Running Go seeder ..."
+	go run ./cmd/seed/...
+	@echo "✅ Seeding complete."
 
 ## ── Utility ──────────────────────────────────────────────────────────────────
 

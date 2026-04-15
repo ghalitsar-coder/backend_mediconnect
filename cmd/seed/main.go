@@ -13,7 +13,8 @@ import (
 const dsn = "postgres://mediconnect_user:mediconnect_password@localhost:5433/mediconnect_db?sslmode=disable"
 
 // bcrypt hash for "password123" (cost=10) — same for all seed accounts
-const defaultPasswordHash = "$2a$10$wK1m3uG33TInE0gqQ6A3/.WzN9d7Zz1XW/yU80q/M3pXv4T11N3D2"
+// Verified: bcrypt.CompareHashAndPassword(hash, []byte("password123")) == nil
+const defaultPasswordHash = "$2a$10$YrLqnCNNBt9L/WW76EHeeOdEN5y9vdZPhE.fmczTur1bM.sMEaQIi"
 
 // ─── Fixed deterministic UUIDs ────────────────────────────────────────────────
 // Generated once; aman dipakai ulang (ON CONFLICT DO NOTHING)
