@@ -84,3 +84,7 @@ func (u *BookingUsecase) CreateBooking(ctx context.Context, userID string, req d
 
 	return res, nil
 }
+
+func (u *BookingUsecase) GetMyBookings(ctx context.Context, userID string) ([]domain.BookingDetail, error) {
+	return u.repo.GetBookingsByUserID(ctx, userID)
+}

@@ -74,3 +74,29 @@ func (r *BookingRepository) CancelStaleBookings(ctx context.Context) (int64, err
 
 	return res.RowsAffected, res.Error
 }
+
+func (r *BookingRepository) GetBookingsByUserID(ctx context.Context, userID string) ([]domain.BookingDetail, error) {
+	var results []domain.BookingDetail
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT
+			b.id,
+			b.booking_code,
+			b.queue_number,
+			b.status,
+			b.schedule_date,
+			b.schedule_time,
+			b.facility_id,
+			f.name  AS facility_name,
+			f.type  AS facility_type,
+			b.doctor_id,
+			u.full_name  AS doctor_name,
+			d.speciality
+		FROM bookings b
+		LEFT JOIN facilities f ON f.id = b.facility_id
+		LEFT JOIN doctors    d ON d.id = b.doctor_id
+		LEFT JOIN users      u ON u.id = d.user_id
+		WHERE b.user_id = ?
+		ORDER BY b.schedule_date DESC, b.schedule_time DESC
+	`, userID).Scan(&results).Error
+	return results, err
+}

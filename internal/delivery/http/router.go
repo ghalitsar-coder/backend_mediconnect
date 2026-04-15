@@ -49,6 +49,7 @@ func SetupRouter(
 		bookings.Use(middleware.JWTAuth)
 		{
 			bookings.POST("", bookingHandler.CreateBooking)
+			bookings.GET("", bookingHandler.GetMyBookings)
 		}
 	}
 

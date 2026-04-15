@@ -39,3 +39,20 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 
 	response.Success(c, http.StatusCreated, "Booking created successfully", booking)
 }
+
+func (h *BookingHandler) GetMyBookings(c *gin.Context) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	userID := userIDVal.(string)
+
+	bookings, err := h.bookingUsecase.GetMyBookings(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Bookings fetched successfully", bookings)
+}
