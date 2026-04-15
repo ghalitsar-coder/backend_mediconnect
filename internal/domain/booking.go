@@ -6,7 +6,7 @@ import (
 )
 
 type Booking struct {
-	ID           string    `json:"id"`
+	ID           string    `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	UserID       string    `json:"user_id"`
 	FacilityID   string    `json:"facility_id"`
 	DoctorID     string    `json:"doctor_id"`
@@ -14,9 +14,9 @@ type Booking struct {
 	ScheduleTime string    `json:"schedule_time"`
 	BookingCode  string    `json:"booking_code"`
 	QueueNumber  string    `json:"queue_number"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Status       string    `json:"status" gorm:"default:PENDING"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 type BookingRequest struct {

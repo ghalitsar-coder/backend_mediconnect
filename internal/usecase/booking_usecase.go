@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"mediconnect/internal/domain"
@@ -31,6 +32,7 @@ func (u *BookingUsecase) CreateBooking(ctx context.Context, userID string, req d
 
 	queueRand := rand.Intn(100) + 1
 	b := &domain.Booking{
+		ID:           uuid.New().String(),
 		UserID:       userID,
 		FacilityID:   req.FacilityID,
 		DoctorID:     req.DoctorID,
@@ -38,6 +40,7 @@ func (u *BookingUsecase) CreateBooking(ctx context.Context, userID string, req d
 		ScheduleTime: req.ScheduleTime,
 		BookingCode:  fmt.Sprintf("MC-%X", rand.Uint32()),
 		QueueNumber:  fmt.Sprintf("A-%d", queueRand),
+		Status:       "PENDING",
 	}
 
 	// Double Booking Check inside the repository transaction (concurrency lock)
