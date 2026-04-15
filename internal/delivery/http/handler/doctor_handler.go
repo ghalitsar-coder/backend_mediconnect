@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"mediconnect/internal/domain"
 	"mediconnect/pkg/response"
@@ -28,4 +29,28 @@ func (h *DoctorHandler) GetDoctors(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "Doctors retrieved successfully", doctors)
+}
+
+func (h *DoctorHandler) GetSlots(c *gin.Context) {
+	doctorID := c.Param("id")
+	dateStr := c.Query("date")
+
+	if doctorID == "" || dateStr == "" {
+		response.Error(c, http.StatusBadRequest, "Doctor ID and date are required")
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid date format, use YYYY-MM-DD")
+		return
+	}
+
+	slots, err := h.usecase.GetAvailableSlots(c.Request.Context(), doctorID, date)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed fetching available slots")
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Slots retrieved successfully", slots)
 }

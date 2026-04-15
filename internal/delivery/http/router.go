@@ -42,6 +42,7 @@ func SetupRouter(
 		doctors := api.Group("/doctors")
 		{
 			doctors.GET("", doctorHandler.GetDoctors)
+			doctors.GET("/:id/slots", doctorHandler.GetSlots)
 		}
 
 		bookings := api.Group("/bookings")
