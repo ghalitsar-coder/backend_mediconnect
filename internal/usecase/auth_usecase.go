@@ -8,6 +8,7 @@ import (
 	"mediconnect/internal/domain"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -37,6 +38,7 @@ func (u *AuthUsecase) Register(ctx context.Context, req domain.RegisterRequest) 
 
 	// 2. Create the user model
 	user := domain.User{
+		ID:           uuid.New(),
 		NIK:          req.NIK,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
