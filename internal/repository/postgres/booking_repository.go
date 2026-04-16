@@ -90,12 +90,11 @@ func (r *BookingRepository) GetBookingsByUserID(ctx context.Context, userID stri
 			f.name  AS facility_name,
 			f.type  AS facility_type,
 			b.doctor_id,
-			u.full_name  AS doctor_name,
-			d.speciality
+			d.name           AS doctor_name,
+			d.specialization AS speciality
 		FROM bookings b
 		LEFT JOIN facilities f ON f.id = b.facility_id
 		LEFT JOIN doctors    d ON d.id = b.doctor_id
-		LEFT JOIN users      u ON u.id = d.user_id
 		WHERE b.user_id = ?
 		ORDER BY b.schedule_date DESC, b.schedule_time DESC
 	`, userID).Scan(&results).Error

@@ -32,6 +32,7 @@ func SetupRouter(
 		{
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/register", authHandler.Register)
+			auth.POST("/logout", authHandler.Logout)
 		}
 
 		facilities := api.Group("/facilities")

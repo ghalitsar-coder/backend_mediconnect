@@ -276,27 +276,26 @@ func seedDinkesUser(db *gorm.DB) error {
 func seedDoctors(db *gorm.DB) error {
 	type row struct {
 		docIdx      int
-		userIdx     int
+		name        string
 		facilityIdx int
 		speciality  string
-		sipNumber   string
 	}
 	rows := []row{
-		{0, 0, 0, "Poli Umum", "SIP/0001/2026"},
-		{1, 1, 0, "Poli Gigi", "SIP/0002/2026"},
-		{2, 2, 1, "Poli Anak", "SIP/0003/2026"},
-		{3, 3, 1, "Poli Kandungan", "SIP/0004/2026"},
-		{4, 4, 2, "Poli Paru", "SIP/0005/2026"},
-		{5, 5, 2, "Poli THT", "SIP/0006/2026"},
-		{6, 6, 3, "Poli Mata", "SIP/0007/2026"},
-		{7, 7, 4, "Poli Umum", "SIP/0008/2026"},
+		{0, "Dr. Budi Santoso", 0, "Poli Umum"},
+		{1, "Dr. Siti Rahayu", 0, "Poli Gigi"},
+		{2, "Dr. Andi Kurniawan", 1, "Poli Anak"},
+		{3, "Dr. Dewi Lestari", 1, "Poli Kandungan"},
+		{4, "Dr. Rudi Hermawan", 2, "Poli Paru"},
+		{5, "Dr. Ani Wijaya", 2, "Poli THT"},
+		{6, "Dr. Henry Prasetyo", 3, "Poli Mata"},
+		{7, "Dr. Maya Indah", 4, "Poli Umum"},
 	}
 	for _, r := range rows {
 		if err := db.Exec(`
-			INSERT INTO doctors (id, user_id, facility_id, speciality, sip_number, is_active)
-			VALUES (?, ?, ?, ?, ?, true)
+			INSERT INTO doctors (id, facility_id, name, specialization, poli_name, rating, patients_count)
+			VALUES (?, ?, ?, ?, ?, 4.5, 120)
 			ON CONFLICT (id) DO NOTHING
-		`, doctorIDs[r.docIdx], nakesUserIDs[r.userIdx], facilityIDs[r.facilityIdx], r.speciality, r.sipNumber).Error; err != nil {
+		`, doctorIDs[r.docIdx], facilityIDs[r.facilityIdx], r.name, r.speciality, r.speciality).Error; err != nil {
 			log.Printf("⚠️  Skip doctor idx %d: %v\n", r.docIdx, err)
 		}
 	}

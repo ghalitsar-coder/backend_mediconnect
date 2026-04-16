@@ -19,17 +19,15 @@ func (r *DoctorRepository) GetDoctors(ctx context.Context, facilityID string, po
 	var doctors []domain.Doctor
 
 	query := r.db.WithContext(ctx).
-		Table("doctors d").
-		Select("d.id, d.facility_id, u.full_name as name, d.speciality as specialization, d.speciality as poli_name, 4.5 as rating, 120 as patients_count").
-		Joins("JOIN users u ON d.user_id = u.id").
-		Where("d.is_active = ?", true)
+		Table("doctors").
+		Select("id, facility_id, name, specialization, poli_name, rating, patients_count")
 
 	if facilityID != "" {
-		query = query.Where("d.facility_id = ?", facilityID)
+		query = query.Where("facility_id = ?", facilityID)
 	}
 
 	if poliName != "" {
-		query = query.Where("d.speciality = ?", poliName)
+		query = query.Where("specialization = ?", poliName)
 	}
 
 	if err := query.Find(&doctors).Error; err != nil {
