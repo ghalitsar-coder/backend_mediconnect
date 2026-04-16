@@ -43,7 +43,7 @@ services:
       - redis
       - rabbitmq
     environment:
-      - DB_URL=postgres://mediconnect_user:mediconnect_password@db:5432/mediconnect_db?sslmode=disable
+      - DB_URL="postgres://cloudGhalitsardev:%40Asdasd1233%40@db-ghal-flex.postgres.database.azure.com:5432/mediconnect?sslmode=require"
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     restart: unless-stopped
