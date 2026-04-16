@@ -16,15 +16,24 @@ import (
 )
 
 type BookingUsecase struct {
-	repo   *postgres.BookingRepository // Using the struct directly for simplicity here
-	rabbit *messaging.RabbitMQ
+	repo     *postgres.BookingRepository
+	authRepo domain.AuthRepository
+	rabbit   *messaging.RabbitMQ
 }
 
-func NewBookingUsecase(repo *postgres.BookingRepository, rabbit *messaging.RabbitMQ) *BookingUsecase {
-	return &BookingUsecase{repo: repo, rabbit: rabbit}
+func NewBookingUsecase(repo *postgres.BookingRepository, authRepo domain.AuthRepository, rabbit *messaging.RabbitMQ) *BookingUsecase {
+	return &BookingUsecase{repo: repo, authRepo: authRepo, rabbit: rabbit}
 }
 
 func (u *BookingUsecase) CreateBooking(ctx context.Context, userID string, req domain.BookingRequest) (*domain.BookingResponse, error) {
+	user, err := u.authRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %v", err)
+	}
+	if user.KtpURL == nil || *user.KtpURL == "" {
+		return nil, fmt.Errorf("URL_KTP_REQUIRED")
+	}
+
 	parsedDate, err := time.Parse("2006-01-02", req.ScheduleDate)
 	if err != nil {
 		return nil, fmt.Errorf("invalid schedule_date format")

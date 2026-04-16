@@ -330,7 +330,7 @@ func seedAppointments(db *gorm.DB) error {
 
 	now := time.Now()
 	for _, r := range rows {
-		scheduled := now.AddDate(0, 0, r.daysOffset).Truncate(24*time.Hour).Add(9 * time.Hour)
+		scheduled := now.AddDate(0, 0, r.daysOffset).Truncate(24 * time.Hour).Add(9 * time.Hour)
 		qrToken := fmt.Sprintf("QR-%d-%d", r.apptIdx+1, time.Now().UnixNano())
 
 		var cancelledAt interface{} = nil
@@ -369,9 +369,9 @@ func seedAppointments(db *gorm.DB) error {
 
 func seedBookings(db *gorm.DB) error {
 	// Cek apakah tabel bookings ada
-	var count int64
-	db.Raw("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='bookings'").Scan(&count)
-	if count == 0 {
+	var exists bool
+	db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema='public' AND table_name='bookings')").Scan(&exists)
+	if !exists {
 		log.Println("ℹ️  Tabel bookings belum ada, skip seed bookings")
 		return nil
 	}

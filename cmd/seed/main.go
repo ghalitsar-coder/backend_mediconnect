@@ -5,12 +5,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/glebarez/sqlite"
+	"mediconnect/config"
+
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-// ─── DSN ──────────────────────────────────────────────────────────────────────
-const dsn = "mediconnect.db"
 
 // bcrypt hash for "password123" (cost=10) — same for all seed accounts
 // Verified: bcrypt.CompareHashAndPassword(hash, []byte("password123")) == nil
@@ -89,7 +88,8 @@ var medicalRecordIDs = []string{
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	cfg := config.LoadConfig()
+	db, err := gorm.Open(postgres.Open(cfg.DBURL), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
@@ -281,7 +281,7 @@ func seedAppointments(db *gorm.DB) {
 
 	now := time.Now()
 	for _, r := range rows {
-		scheduled := now.AddDate(0, 0, r.daysOffset).Truncate(24*time.Hour).Add(9 * time.Hour)
+		scheduled := now.AddDate(0, 0, r.daysOffset).Truncate(24 * time.Hour).Add(9 * time.Hour)
 		qrToken := fmt.Sprintf("QR-%d-%d", r.apptIdx+1, time.Now().UnixNano())
 
 		var cancelledAt interface{} = nil
@@ -328,7 +328,7 @@ var bookingIDs = []string{
 func seedBookings(db *gorm.DB) {
 	// Cek apakah tabel bookings ada
 	var exists bool
-	db.Raw("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='bookings'").Scan(&exists)
+	db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema='public' AND table_name='bookings')").Scan(&exists)
 	if !exists {
 		log.Println("ℹ️  Tabel bookings belum ada, skip seed bookings")
 		return

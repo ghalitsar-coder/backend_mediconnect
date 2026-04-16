@@ -2,14 +2,14 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies (no gcc needed since we use pure go sqlite)
+# Install dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the rest of the source code
 COPY . .
 
-# Explicitly set CGO_ENABLED=0 since we are using glebarez pure-go sqlite
+# Explicitly set CGO_ENABLED=0 since we are compiling statically
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
 
 # Minimalist runtime

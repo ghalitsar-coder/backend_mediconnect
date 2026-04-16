@@ -22,7 +22,7 @@ const (
 
 // Claims represents the JWT claims structure
 type Claims struct {
-	UserID    uint      `json:"user_id"`
+	UserID    string    `json:"user_id"`
 	Email     string    `json:"email"`
 	Role      string    `json:"role"`
 	TokenType TokenType `json:"token_type"`
@@ -46,17 +46,17 @@ func NewJWTManager(secret string, accessExpiry, refreshExpiry time.Duration) *JW
 }
 
 // GenerateAccessToken creates a new access token for a user
-func (m *JWTManager) GenerateAccessToken(userID uint, email, role string) (string, error) {
+func (m *JWTManager) GenerateAccessToken(userID string, email, role string) (string, error) {
 	return m.generateToken(userID, email, role, AccessToken, m.accessExpiry)
 }
 
 // GenerateRefreshToken creates a new refresh token for a user
-func (m *JWTManager) GenerateRefreshToken(userID uint, email, role string) (string, error) {
+func (m *JWTManager) GenerateRefreshToken(userID string, email, role string) (string, error) {
 	return m.generateToken(userID, email, role, RefreshToken, m.refreshExpiry)
 }
 
 // generateToken creates a token with the specified parameters
-func (m *JWTManager) generateToken(userID uint, email, role string, tokenType TokenType, expiry time.Duration) (string, error) {
+func (m *JWTManager) generateToken(userID string, email, role string, tokenType TokenType, expiry time.Duration) (string, error) {
 	now := time.Now()
 
 	claims := Claims{
@@ -137,7 +137,7 @@ type TokenPair struct {
 }
 
 // GenerateTokenPair creates both access and refresh tokens
-func (m *JWTManager) GenerateTokenPair(userID uint, email, role string) (*TokenPair, error) {
+func (m *JWTManager) GenerateTokenPair(userID string, email, role string) (*TokenPair, error) {
 	accessToken, err := m.GenerateAccessToken(userID, email, role)
 	if err != nil {
 		return nil, err
