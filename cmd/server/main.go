@@ -13,6 +13,7 @@ import (
 	"mediconnect/internal/delivery/http/handler"
 	"mediconnect/internal/domain"
 	"mediconnect/internal/repository/postgres"
+	"mediconnect/internal/seed"
 	"mediconnect/internal/usecase"
 	"mediconnect/pkg/database"
 	pkgLogger "mediconnect/pkg/logger"
@@ -34,6 +35,11 @@ func main() {
 	// AutoMigrate missing schema
 	log.Println("Migrating SQLite schema...")
 	db.AutoMigrate(&domain.User{}, &domain.Facility{}, &domain.Doctor{}, &domain.Booking{})
+
+	// Jalankan Seeder (idempotent: ON CONFLICT DO NOTHING)
+	if err := seed.SeedAll(db); err != nil {
+		log.Printf("⚠️  Seeding failed (non-fatal): %v", err)
+	}
 
 	// Initialize Repositories
 	authRepo := postgres.NewAuthRepository(db)
