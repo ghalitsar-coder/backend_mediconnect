@@ -14,6 +14,7 @@ type User struct {
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"` // Don't expose password hash in JSON
 	Phone        *string   `json:"phone,omitempty"`
+	KtpURL       *string   `json:"ktp_url,omitempty"` // URL gambar KTP dari Azure Blob
 	FullName     string    `json:"full_name"`
 	Role         string    `json:"role"`
 	IsActive     bool      `json:"is_active"`
@@ -46,11 +47,13 @@ type AuthResponse struct {
 // AuthUsecase defines the interface for auth business logic
 type AuthUsecase interface {
 	Register(ctx context.Context, req RegisterRequest) (User, error)
-	Login(ctx context.Context, req LoginRequest) (string, User, error) // Returns JWT token and User info
+	Login(ctx context.Context, req LoginRequest) (User, error) // Returns JWT token and User info
 }
 
 // AuthRepository defines the interface for user data operations
 type AuthRepository interface {
 	CreateUser(ctx context.Context, user *User) error
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	GetUserByID(ctx context.Context, id string) (*User, error)
+	UpdateUserKtpURL(ctx context.Context, id string, ktpURL string) error
 }

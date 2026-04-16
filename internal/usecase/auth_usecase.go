@@ -1,88 +1,71 @@
 package usecase
 
 import (
-	"context"
-	"errors"
-	"time"
+    "context"
+    "errors"
+    "fmt"
 
-	"mediconnect/internal/domain"
+    "mediconnect/internal/domain"
 
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
+    "github.com/google/uuid"
+    "golang.org/x/crypto/bcrypt"
 )
 
 type AuthUsecase struct {
-	authRepo  domain.AuthRepository
-	jwtSecret string
+    authRepo  domain.AuthRepository
+    jwtSecret string // tidak digunakan lagi untuk generate token, tapi mungkin untuk keperluan lain
 }
 
 func NewAuthUsecase(repo domain.AuthRepository, secret string) domain.AuthUsecase {
-	return &AuthUsecase{
-		authRepo:  repo,
-		jwtSecret: secret,
-	}
+    return &AuthUsecase{
+        authRepo:  repo,
+        jwtSecret: secret,
+    }
 }
 
 func (u *AuthUsecase) Register(ctx context.Context, req domain.RegisterRequest) (domain.User, error) {
-	// 1. Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return domain.User{}, err
-	}
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+    if err != nil {
+        return domain.User{}, err
+    }
 
-	role := req.Role
-	if role == "" {
-		role = "PATIENT"
-	}
+    role := req.Role
+    if role == "" {
+        role = "PATIENT"
+    }
 
-	// 2. Create the user model
-	user := domain.User{
-		ID:           uuid.New(),
-		NIK:          req.NIK,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		Phone:        req.Phone,
-		FullName:     req.FullName,
-		Role:         role,
-		IsActive:     true,
-	}
+    user := domain.User{
+        ID:           uuid.New(),
+        NIK:          req.NIK,
+        Email:        req.Email,
+        PasswordHash: string(hashedPassword),
+        Phone:        req.Phone,
+        FullName:     req.FullName,
+        Role:         role,
+        IsActive:     true,
+    }
 
-	// 3. Save to database
-	err = u.authRepo.CreateUser(ctx, &user)
-	if err != nil {
-		return domain.User{}, err
-	}
+    err = u.authRepo.CreateUser(ctx, &user)
+    if err != nil {
+        return domain.User{}, err
+    }
 
-	return user, nil
+    return user, nil
 }
 
-func (u *AuthUsecase) Login(ctx context.Context, req domain.LoginRequest) (string, domain.User, error) {
-	// 1. Find user by email
-	user, err := u.authRepo.GetUserByEmail(ctx, req.Email)
-	if err != nil {
-		return "", domain.User{}, errors.New("invalid email or password")
-	}
+func (u *AuthUsecase) Login(ctx context.Context, req domain.LoginRequest) (domain.User, error) {
+    user, err := u.authRepo.GetUserByEmail(ctx, req.Email)
+    if err != nil {
+        fmt.Println("login error:", err)
+        return domain.User{}, errors.New("invalid email or password")
+    }
 
-	// 2. Compare password
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
-	if err != nil {
-		return "", domain.User{}, errors.New("invalid email or password")
-	}
+    err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+    if err != nil {
+        fmt.Println("login error:", err)
+        return domain.User{}, errors.New("invalid email or password")
+    }
 
-	// 3. Generate JWT
-	claims := jwt.MapClaims{
-		"user_id": user.ID.String(),
-		"role":    user.Role,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(u.jwtSecret))
-	if err != nil {
-		return "", domain.User{}, err
-	}
-
-	return tokenString, *user, nil
+    // Tidak membuat token di sini, token dibuat di handler
+    return *user, nil
 }

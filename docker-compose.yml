@@ -12,7 +12,7 @@ services:
       - "5433:5432"
     volumes:
       # Mount the schema file to initialize the database
-      - ./mediconnect_id_schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mediconnect_id_schema.sql:/docker-entrypoint-initdb.d/init.sql        
     restart: unless-stopped
 
   redis:

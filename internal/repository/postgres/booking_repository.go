@@ -68,9 +68,10 @@ func (r *BookingRepository) CreateBookingWithLock(ctx context.Context, b *domain
 }
 
 func (r *BookingRepository) CancelStaleBookings(ctx context.Context) (int64, error) {
+	threshold := time.Now().Add(-30 * time.Minute)
 	res := r.db.WithContext(ctx).Table("bookings").
-		Where("status = ? AND (schedule_date + schedule_time) < (CURRENT_TIMESTAMP - INTERVAL '30 minutes')", "PENDING").
-		Updates(map[string]interface{}{"status": "NO_SHOW", "updated_at": gorm.Expr("CURRENT_TIMESTAMP")})
+		Where("status = ? AND created_at < ?", "PENDING", threshold).
+		Updates(map[string]interface{}{"status": "NO_SHOW", "updated_at": time.Now()})
 
 	return res.RowsAffected, res.Error
 }
@@ -89,12 +90,11 @@ func (r *BookingRepository) GetBookingsByUserID(ctx context.Context, userID stri
 			f.name  AS facility_name,
 			f.type  AS facility_type,
 			b.doctor_id,
-			u.full_name  AS doctor_name,
-			d.speciality
+			d.name           AS doctor_name,
+			d.specialization AS speciality
 		FROM bookings b
 		LEFT JOIN facilities f ON f.id = b.facility_id
 		LEFT JOIN doctors    d ON d.id = b.doctor_id
-		LEFT JOIN users      u ON u.id = d.user_id
 		WHERE b.user_id = ?
 		ORDER BY b.schedule_date DESC, b.schedule_time DESC
 	`, userID).Scan(&results).Error

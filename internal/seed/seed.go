@@ -1,22 +1,17 @@
-package main
+package seed
 
 import (
 	"fmt"
 	"log"
 	"time"
 
-	"mediconnect/config"
-
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// bcrypt hash for "password123" (cost=10) — same for all seed accounts
-// Verified: bcrypt.CompareHashAndPassword(hash, []byte("password123")) == nil
+// bcrypt hash for "password123" (cost=10)
 const defaultPasswordHash = "$2a$10$YrLqnCNNBt9L/WW76EHeeOdEN5y9vdZPhE.fmczTur1bM.sMEaQIi"
 
 // ─── Fixed deterministic UUIDs ────────────────────────────────────────────────
-// Generated once; aman dipakai ulang (ON CONFLICT DO NOTHING)
 
 var facilityIDs = []string{
 	"11100000-0000-0000-0000-000000000001", // Puskesmas Kebayoran Baru
@@ -87,31 +82,81 @@ var medicalRecordIDs = []string{
 	"77700000-0000-0000-0000-000000000005",
 }
 
-func main() {
-	cfg := config.LoadConfig()
-	db, err := gorm.Open(postgres.Open(cfg.DBURL), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v", err)
+var bookingIDs = []string{
+	"88800000-0000-0000-0000-000000000001",
+	"88800000-0000-0000-0000-000000000002",
+	"88800000-0000-0000-0000-000000000003",
+	"88800000-0000-0000-0000-000000000004",
+	"88800000-0000-0000-0000-000000000005",
+}
+
+var labResultIDs = []string{
+	"99900000-0000-0000-0000-000000000001",
+	"99900000-0000-0000-0000-000000000002",
+	"99900000-0000-0000-0000-000000000003",
+	"99900000-0000-0000-0000-000000000004",
+	"99900000-0000-0000-0000-000000000005",
+	"99900000-0000-0000-0000-000000000006",
+	"99900000-0000-0000-0000-000000000007",
+	"99900000-0000-0000-0000-000000000008",
+	"99900000-0000-0000-0000-000000000009",
+	"99900000-0000-0000-0000-000000000010",
+}
+
+var diseaseLogIDs = []string{
+	"aaaa0000-0000-0000-0000-000000000001",
+	"aaaa0000-0000-0000-0000-000000000002",
+	"aaaa0000-0000-0000-0000-000000000003",
+	"aaaa0000-0000-0000-0000-000000000004",
+	"aaaa0000-0000-0000-0000-000000000005",
+	"aaaa0000-0000-0000-0000-000000000006",
+	"aaaa0000-0000-0000-0000-000000000007",
+	"aaaa0000-0000-0000-0000-000000000008",
+}
+
+// SeedAll menjalankan semua seeder secara berurutan.
+// Menggunakan ON CONFLICT DO NOTHING sehingga aman dijalankan berulang kali (idempotent).
+func SeedAll(db *gorm.DB) error {
+	log.Println("🌱 Starting database seeding...")
+
+	if err := seedFacilities(db); err != nil {
+		return fmt.Errorf("seedFacilities: %w", err)
 	}
-	log.Println("✅ Connected to database")
+	if err := seedNakesUsers(db); err != nil {
+		return fmt.Errorf("seedNakesUsers: %w", err)
+	}
+	if err := seedPatientUsers(db); err != nil {
+		return fmt.Errorf("seedPatientUsers: %w", err)
+	}
+	if err := seedDinkesUser(db); err != nil {
+		return fmt.Errorf("seedDinkesUser: %w", err)
+	}
+	if err := seedDoctors(db); err != nil {
+		return fmt.Errorf("seedDoctors: %w", err)
+	}
+	if err := seedAppointments(db); err != nil {
+		return fmt.Errorf("seedAppointments: %w", err)
+	}
+	if err := seedBookings(db); err != nil {
+		return fmt.Errorf("seedBookings: %w", err)
+	}
+	if err := seedMedicalRecords(db); err != nil {
+		return fmt.Errorf("seedMedicalRecords: %w", err)
+	}
+	if err := seedLabResults(db); err != nil {
+		return fmt.Errorf("seedLabResults: %w", err)
+	}
+	if err := seedDiseaseLogs(db); err != nil {
+		return fmt.Errorf("seedDiseaseLogs: %w", err)
+	}
 
-	seedFacilities(db)
-	seedNakesUsers(db)
-	seedPatientUsers(db)
-	seedDinkesUser(db)
-	seedDoctors(db)
-	seedAppointments(db)
-	seedBookings(db)
-	seedMedicalRecords(db)
-	seedLabResults(db)
-	seedDiseaseLogs(db)
-
-	fmt.Println("\n🎉 Seed completed successfully!")
+	log.Println("🎉 Database seeding completed successfully!")
+	return nil
 }
 
 // ─── FACILITIES ───────────────────────────────────────────────────────────────
 
-func seedFacilities(db *gorm.DB) {
+func seedFacilities(db *gorm.DB) error {
 	type row struct {
 		idx        int
 		name       string
@@ -141,11 +186,12 @@ func seedFacilities(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded facilities")
+	return nil
 }
 
 // ─── USERS: NAKES ─────────────────────────────────────────────────────────────
 
-func seedNakesUsers(db *gorm.DB) {
+func seedNakesUsers(db *gorm.DB) error {
 	type row struct {
 		idx   int
 		nik   string
@@ -173,11 +219,12 @@ func seedNakesUsers(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded NAKES users")
+	return nil
 }
 
 // ─── USERS: PATIENT ───────────────────────────────────────────────────────────
 
-func seedPatientUsers(db *gorm.DB) {
+func seedPatientUsers(db *gorm.DB) error {
 	type row struct {
 		idx   int
 		nik   string
@@ -207,11 +254,12 @@ func seedPatientUsers(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded PATIENT users")
+	return nil
 }
 
 // ─── USER: DINKES ─────────────────────────────────────────────────────────────
 
-func seedDinkesUser(db *gorm.DB) {
+func seedDinkesUser(db *gorm.DB) error {
 	if err := db.Exec(`
 		INSERT INTO users (id, nik, email, password_hash, phone, full_name, role, is_active)
 		VALUES (?, '3171030303800001', 'admin.dinkes@mediconnect.id', ?, '081300000001', 'Admin Dinas Kesehatan', 'DINKES', true)
@@ -220,43 +268,44 @@ func seedDinkesUser(db *gorm.DB) {
 		log.Printf("⚠️  Skip dinkes user: %v\n", err)
 	}
 	log.Println("✅ Seeded DINKES user")
+	return nil
 }
 
 // ─── DOCTORS ──────────────────────────────────────────────────────────────────
 
-func seedDoctors(db *gorm.DB) {
+func seedDoctors(db *gorm.DB) error {
 	type row struct {
 		docIdx      int
-		userIdx     int
+		name        string
 		facilityIdx int
 		speciality  string
-		sipNumber   string
 	}
 	rows := []row{
-		{0, 0, 0, "Poli Umum", "SIP/0001/2026"},
-		{1, 1, 0, "Poli Gigi", "SIP/0002/2026"},
-		{2, 2, 1, "Poli Anak", "SIP/0003/2026"},
-		{3, 3, 1, "Poli Kandungan", "SIP/0004/2026"},
-		{4, 4, 2, "Poli Paru", "SIP/0005/2026"},
-		{5, 5, 2, "Poli THT", "SIP/0006/2026"},
-		{6, 6, 3, "Poli Mata", "SIP/0007/2026"},
-		{7, 7, 4, "Poli Umum", "SIP/0008/2026"},
+		{0, "Dr. Budi Santoso", 0, "Poli Umum"},
+		{1, "Dr. Siti Rahayu", 0, "Poli Gigi"},
+		{2, "Dr. Andi Kurniawan", 1, "Poli Anak"},
+		{3, "Dr. Dewi Lestari", 1, "Poli Kandungan"},
+		{4, "Dr. Rudi Hermawan", 2, "Poli Paru"},
+		{5, "Dr. Ani Wijaya", 2, "Poli THT"},
+		{6, "Dr. Henry Prasetyo", 3, "Poli Mata"},
+		{7, "Dr. Maya Indah", 4, "Poli Umum"},
 	}
 	for _, r := range rows {
 		if err := db.Exec(`
-			INSERT INTO doctors (id, user_id, facility_id, speciality, sip_number, is_active)
-			VALUES (?, ?, ?, ?, ?, true)
+			INSERT INTO doctors (id, facility_id, name, specialization, poli_name, rating, patients_count)
+			VALUES (?, ?, ?, ?, ?, 4.5, 120)
 			ON CONFLICT (id) DO NOTHING
-		`, doctorIDs[r.docIdx], nakesUserIDs[r.userIdx], facilityIDs[r.facilityIdx], r.speciality, r.sipNumber).Error; err != nil {
+		`, doctorIDs[r.docIdx], facilityIDs[r.facilityIdx], r.name, r.speciality, r.speciality).Error; err != nil {
 			log.Printf("⚠️  Skip doctor idx %d: %v\n", r.docIdx, err)
 		}
 	}
 	log.Println("✅ Seeded doctors")
+	return nil
 }
 
 // ─── APPOINTMENTS ─────────────────────────────────────────────────────────────
 
-func seedAppointments(db *gorm.DB) {
+func seedAppointments(db *gorm.DB) error {
 	type row struct {
 		apptIdx     int
 		userIdx     int
@@ -313,25 +362,18 @@ func seedAppointments(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded appointments")
+	return nil
 }
 
 // ─── BOOKINGS ─────────────────────────────────────────────────────────────────
 
-var bookingIDs = []string{
-	"88800000-0000-0000-0000-000000000001",
-	"88800000-0000-0000-0000-000000000002",
-	"88800000-0000-0000-0000-000000000003",
-	"88800000-0000-0000-0000-000000000004",
-	"88800000-0000-0000-0000-000000000005",
-}
-
-func seedBookings(db *gorm.DB) {
+func seedBookings(db *gorm.DB) error {
 	// Cek apakah tabel bookings ada
 	var exists bool
 	db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema='public' AND table_name='bookings')").Scan(&exists)
 	if !exists {
 		log.Println("ℹ️  Tabel bookings belum ada, skip seed bookings")
-		return
+		return nil
 	}
 
 	type row struct {
@@ -361,7 +403,7 @@ func seedBookings(db *gorm.DB) {
 			INSERT INTO bookings
 				(id, user_id, facility_id, doctor_id, schedule_date, schedule_time,
 				 booking_code, queue_number, status, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 			ON CONFLICT (id) DO NOTHING
 		`,
 			bookingIDs[r.bookingIdx],
@@ -378,11 +420,12 @@ func seedBookings(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded bookings")
+	return nil
 }
 
 // ─── MEDICAL RECORDS ──────────────────────────────────────────────────────────
 
-func seedMedicalRecords(db *gorm.DB) {
+func seedMedicalRecords(db *gorm.DB) error {
 	type row struct {
 		mrIdx        int
 		userIdx      int
@@ -418,24 +461,12 @@ func seedMedicalRecords(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded medical records")
+	return nil
 }
 
 // ─── LAB RESULTS ──────────────────────────────────────────────────────────────
 
-var labResultIDs = []string{
-	"99900000-0000-0000-0000-000000000001",
-	"99900000-0000-0000-0000-000000000002",
-	"99900000-0000-0000-0000-000000000003",
-	"99900000-0000-0000-0000-000000000004",
-	"99900000-0000-0000-0000-000000000005",
-	"99900000-0000-0000-0000-000000000006",
-	"99900000-0000-0000-0000-000000000007",
-	"99900000-0000-0000-0000-000000000008",
-	"99900000-0000-0000-0000-000000000009",
-	"99900000-0000-0000-0000-000000000010",
-}
-
-func seedLabResults(db *gorm.DB) {
+func seedLabResults(db *gorm.DB) error {
 	type row struct {
 		labIdx      int
 		recordIdx   int
@@ -477,22 +508,12 @@ func seedLabResults(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded lab results")
+	return nil
 }
 
 // ─── DISEASE LOGS ─────────────────────────────────────────────────────────────
 
-var diseaseLogIDs = []string{
-	"aaaa0000-0000-0000-0000-000000000001",
-	"aaaa0000-0000-0000-0000-000000000002",
-	"aaaa0000-0000-0000-0000-000000000003",
-	"aaaa0000-0000-0000-0000-000000000004",
-	"aaaa0000-0000-0000-0000-000000000005",
-	"aaaa0000-0000-0000-0000-000000000006",
-	"aaaa0000-0000-0000-0000-000000000007",
-	"aaaa0000-0000-0000-0000-000000000008",
-}
-
-func seedDiseaseLogs(db *gorm.DB) {
+func seedDiseaseLogs(db *gorm.DB) error {
 	type row struct {
 		logIdx      int
 		recordIdx   int
@@ -527,4 +548,5 @@ func seedDiseaseLogs(db *gorm.DB) {
 		}
 	}
 	log.Println("✅ Seeded disease logs")
+	return nil
 }

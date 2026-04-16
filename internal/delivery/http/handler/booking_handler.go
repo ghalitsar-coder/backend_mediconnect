@@ -24,10 +24,13 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 	}
 
 	// get the user ID from the Context (set by the Auth Middleware)
-	userIDVal, exists := c.Get("user_id")
+	userIDVal, exists := c.Get("userID")
 	if !exists {
-		response.Error(c, http.StatusUnauthorized, "Unauthorized")
-		return
+		userIDVal, exists = c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "User not authenticated")
+			return
+		}
 	}
 	userID := userIDVal.(string)
 
@@ -41,7 +44,7 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 }
 
 func (h *BookingHandler) GetMyBookings(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
+	userIDVal, exists := c.Get("userID")
 	if !exists {
 		response.Error(c, http.StatusUnauthorized, "Unauthorized")
 		return

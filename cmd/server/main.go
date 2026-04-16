@@ -11,11 +11,14 @@ import (
 	"mediconnect/config"
 	httpDelivery "mediconnect/internal/delivery/http"
 	"mediconnect/internal/delivery/http/handler"
+	"mediconnect/internal/domain"
 	"mediconnect/internal/repository/postgres"
+	"mediconnect/internal/seed"
 	"mediconnect/internal/usecase"
 	"mediconnect/pkg/database"
+	"mediconnect/pkg/jwt"
 	pkgLogger "mediconnect/pkg/logger"
-	"mediconnect/pkg/messaging"
+	"mediconnect/pkg/storage"
 )
 
 func main() {
@@ -25,18 +28,25 @@ func main() {
 	// Initialize Logger
 	pkgLogger.Init(cfg.AppEnv)
 
-	// Connect Database (GORM)
+	// Connect Database (PostgreSQL)
 	db, err := database.ConnectPostgres(cfg.DBURL)
 	if err != nil {
 		log.Fatalf("Failed to connect database: %v\n", err)
 	}
 
-	// Connect RabbitMQ
-	rabbit, err := messaging.ConnectRabbitMQ(cfg.RabbitMQURL)
-	if err != nil {
-		log.Fatalf("Failed to connect RabbitMQ: %v\n", err)
-	}
+	// AutoMigrate missing schema
+	log.Println("Migrating PostgreSQL schema...")
+	db.AutoMigrate(&domain.User{}, &domain.Facility{}, &domain.Doctor{}, &domain.Booking{})
 
+	// Jalankan Seeder (idempotent: ON CONFLICT DO NOTHING)
+	if err := seed.SeedAll(db); err != nil {
+		log.Printf("⚠️  Seeding failed (non-fatal): %v", err)
+	}
+	jwtManager := jwt.NewJWTManager(
+		"mysecret",     // sebaiknya dari config
+		24*time.Hour,   // access expiry
+		7*24*time.Hour, // refresh expiry
+	)
 	// Initialize Repositories
 	authRepo := postgres.NewAuthRepository(db)
 	facilityRepo := postgres.NewFacilityRepository(db)
@@ -46,18 +56,25 @@ func main() {
 	// Initialize Usecases
 	authUsecase := usecase.NewAuthUsecase(authRepo, "mysecret") // Ideally from config
 	facilityUsecase := usecase.NewFacilityUsecase(facilityRepo)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, rabbit)
+	// Pass nil for rabbit MQ since we are dropping it
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, authRepo, nil)
 	doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
 
+	// Initialize Storage Service
+	blobService, err := storage.NewAzureBlobService(cfg.AzureStorageConnectionString)
+	if err != nil {
+		log.Printf("⚠️  Failed to initialize blob service: %v", err)
+	}
+
 	// Initialize Handlers
-	authHandler := handler.NewAuthHandler(authUsecase)
+	authHandler := handler.NewAuthHandler(authUsecase, jwtManager)
 	facilityHandler := handler.NewFacilityHandler(facilityUsecase)
 	bookingHandler := handler.NewBookingHandler(bookingUsecase)
 	doctorHandler := handler.NewDoctorHandler(doctorUsecase)
+	uploadHandler := handler.NewUploadHandler(blobService, authRepo)
 
 	// Setup Router
-	router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler)
-
+	router := httpDelivery.SetupRouter(authHandler, facilityHandler, bookingHandler, doctorHandler, uploadHandler, jwtManager)
 	srv := &http.Server{
 		Addr:    ":" + cfg.ServerPort,
 		Handler: router,
