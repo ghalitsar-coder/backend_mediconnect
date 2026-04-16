@@ -1,29 +1,32 @@
-# Stage 1: Build the Go application
-FROM golang:alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Copy go mod files to download dependencies
+# Install dependencies (no gcc needed since we use pure go sqlite)
 COPY go.mod go.sum ./
-
 RUN go mod download
 
-# Copy the entire project 
+# Copy the rest of the source code
 COPY . .
 
-# Build the executable
-RUN CGO_ENABLED=0 GOOS=linux go build -o mediconnect-backend ./cmd/server/main.go
+# Explicitly set CGO_ENABLED=0 since we are using glebarez pure-go sqlite
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
 
-# Stage 2: Run the application
+# Minimalist runtime
 FROM alpine:latest
 
-WORKDIR /root/
+WORKDIR /app
 
-# Copy the pre-built binary file from the previous stage
-COPY --from=builder /app/mediconnect-backend .
+# Setup timezone
+RUN apk --no-cache add ca-certificates tzdata
 
-# Expose port 8080 to the outside world
+# Copy built binary
+COPY --from=builder /app/main .
+
+# Copy environment template if needed or config structure
+COPY .env .env
+
+# Expose port
 EXPOSE 8080
 
-# Command to run the executable
-CMD ["./mediconnect-backend"]
+CMD ["./main"]

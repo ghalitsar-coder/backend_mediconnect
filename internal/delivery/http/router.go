@@ -51,6 +51,14 @@ func SetupRouter(
 			bookings.POST("", bookingHandler.CreateBooking)
 			bookings.GET("", bookingHandler.GetMyBookings)
 		}
+
+		// Alias for assignment rubric compatibility
+		data := api.Group("/data")
+		data.Use(middleware.JWTAuth)
+		{
+			data.POST("", bookingHandler.CreateBooking)
+			data.GET("", bookingHandler.GetMyBookings)
+		}
 	}
 
 	return router

@@ -5,12 +5,12 @@ import (
 	"log"
 	"time"
 
-	"gorm.io/driver/postgres"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
 // ─── DSN ──────────────────────────────────────────────────────────────────────
-const dsn = "postgres://mediconnect_user:mediconnect_password@localhost:5433/mediconnect_db?sslmode=disable"
+const dsn = "mediconnect.db"
 
 // bcrypt hash for "password123" (cost=10) — same for all seed accounts
 // Verified: bcrypt.CompareHashAndPassword(hash, []byte("password123")) == nil
@@ -89,7 +89,7 @@ var medicalRecordIDs = []string{
 }
 
 func main() {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
@@ -328,7 +328,7 @@ var bookingIDs = []string{
 func seedBookings(db *gorm.DB) {
 	// Cek apakah tabel bookings ada
 	var exists bool
-	db.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bookings')").Scan(&exists)
+	db.Raw("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='bookings'").Scan(&exists)
 	if !exists {
 		log.Println("ℹ️  Tabel bookings belum ada, skip seed bookings")
 		return

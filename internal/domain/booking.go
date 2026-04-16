@@ -6,7 +6,7 @@ import (
 )
 
 type Booking struct {
-	ID           string    `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID           string    `json:"id" gorm:"primaryKey"`
 	UserID       string    `json:"user_id"`
 	FacilityID   string    `json:"facility_id"`
 	DoctorID     string    `json:"doctor_id"`

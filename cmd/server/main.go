@@ -11,11 +11,11 @@ import (
 	"mediconnect/config"
 	httpDelivery "mediconnect/internal/delivery/http"
 	"mediconnect/internal/delivery/http/handler"
+	"mediconnect/internal/domain"
 	"mediconnect/internal/repository/postgres"
 	"mediconnect/internal/usecase"
 	"mediconnect/pkg/database"
 	pkgLogger "mediconnect/pkg/logger"
-	"mediconnect/pkg/messaging"
 )
 
 func main() {
@@ -25,17 +25,15 @@ func main() {
 	// Initialize Logger
 	pkgLogger.Init(cfg.AppEnv)
 
-	// Connect Database (GORM)
-	db, err := database.ConnectPostgres(cfg.DBURL)
+	// Connect Database (SQLite)
+	db, err := database.ConnectSQLite("mediconnect.db")
 	if err != nil {
 		log.Fatalf("Failed to connect database: %v\n", err)
 	}
 
-	// Connect RabbitMQ
-	rabbit, err := messaging.ConnectRabbitMQ(cfg.RabbitMQURL)
-	if err != nil {
-		log.Fatalf("Failed to connect RabbitMQ: %v\n", err)
-	}
+	// AutoMigrate missing schema
+	log.Println("Migrating SQLite schema...")
+	db.AutoMigrate(&domain.User{}, &domain.Facility{}, &domain.Doctor{}, &domain.Booking{})
 
 	// Initialize Repositories
 	authRepo := postgres.NewAuthRepository(db)
@@ -46,7 +44,8 @@ func main() {
 	// Initialize Usecases
 	authUsecase := usecase.NewAuthUsecase(authRepo, "mysecret") // Ideally from config
 	facilityUsecase := usecase.NewFacilityUsecase(facilityRepo)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, rabbit)
+	// Pass nil for rabbit MQ since we are dropping it
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, nil)
 	doctorUsecase := usecase.NewDoctorUsecase(doctorRepo)
 
 	// Initialize Handlers
