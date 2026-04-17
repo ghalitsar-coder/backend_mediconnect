@@ -74,7 +74,7 @@ jobs:
             echo 'AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"' > .env
             echo 'DB_URL="${{ secrets.DB_URL }}"' >> .env
             
-            docker-compose up -d
+            docker compose up -d
             
             echo "Membersihkan file .tar..."
             rm /home/${{ secrets.BACKEND_USERNAME }}/backend-image.tar
