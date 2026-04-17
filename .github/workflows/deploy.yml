@@ -24,7 +24,7 @@ jobs:
       - name: Build and push Backend Docker image
         uses: docker/build-push-action@v5
         with:
-          context: backend_mediconnect
+          context: .
           push: true
           tags: ${{ env.BACKEND_IMAGE_NAME }}
 
@@ -40,10 +40,6 @@ jobs:
           docker pull ${{ env.BACKEND_IMAGE_NAME }}
           echo "Menyimpan image menjadi file .tar..."
           docker save -o backend-image.tar ${{ env.BACKEND_IMAGE_NAME }}
-          
-          echo "Menyiapkan file yang akan di-SCP ke VM..."
-          cp backend_mediconnect/docker-compose.yml .
-          cp backend_mediconnect/mediconnect_id_schema.sql .
 
       - name: Copy Files to Backend via ProxyJump
         uses: appleboy/scp-action@v0.1.4
