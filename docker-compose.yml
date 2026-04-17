@@ -34,7 +34,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build: .
+    image: ghalitsar/backend-app:v2
     container_name: mediconnect-backend
     ports:
       - "8080:8080"
@@ -43,7 +43,8 @@ services:
       - redis
       - rabbitmq
     environment:
-      - DB_URL="postgres://cloudGhalitsardev:%40Asdasd1233%40@db-ghal-flex.postgres.database.azure.com:5432/mediconnect?sslmode=require"
+      - DB_URL=${DB_URL}
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
     restart: unless-stopped

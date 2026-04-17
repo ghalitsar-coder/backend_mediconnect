@@ -1,0 +1,80 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  BACKEND_IMAGE_NAME: ghalitsar/backend-app:v2
+
+jobs:
+  build-and-push-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.BACKEND_IMAGE_NAME }}
+
+  deploy-backend:
+    needs: build-and-push-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pull image from Docker Hub (on GitHub Runner)
+        run: |
+          docker pull ${{ env.BACKEND_IMAGE_NAME }}
+          echo "Menyimpan image menjadi file .tar..."
+          docker save -o backend-image.tar ${{ env.BACKEND_IMAGE_NAME }}
+
+      - name: Copy Files to Backend via ProxyJump
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.BACKEND_PRIVATE_IP }}
+          username: ${{ secrets.BACKEND_USERNAME }}
+          key: ${{ secrets.BACKEND_SSH_KEY }}
+          proxy_host: ${{ secrets.FRONTEND_HOST }}
+          proxy_username: ${{ secrets.FRONTEND_USERNAME }}
+          proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
+          # Karena file docker-compose ada di root repo backend
+          source: "backend-image.tar,docker-compose.yml,mediconnect_id_schema.sql"
+          target: "/home/${{ secrets.BACKEND_USERNAME }}/"
+
+      - name: Deploy Backend via ProxyJump SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.BACKEND_PRIVATE_IP }}
+          username: ${{ secrets.BACKEND_USERNAME }}
+          key: ${{ secrets.BACKEND_SSH_KEY }}
+          proxy_host: ${{ secrets.FRONTEND_HOST }}
+          proxy_username: ${{ secrets.FRONTEND_USERNAME }}
+          proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
+          script: |
+            echo "Memuat image ke Docker dari file .tar lokal..."
+            docker load -i /home/${{ secrets.BACKEND_USERNAME }}/backend-image.tar
+            
+            echo "Restarting Backend..."
+            cd /home/${{ secrets.BACKEND_USERNAME }} || true
+            
+            echo "Membuat file .env..."
+            echo 'AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"' > .env
+            echo 'DB_URL="${{ secrets.DB_URL }}"' >> .env
+            
+            docker-compose up -d
+            
+            echo "Membersihkan file .tar..."
+            rm /home/${{ secrets.BACKEND_USERNAME }}/backend-image.tar
