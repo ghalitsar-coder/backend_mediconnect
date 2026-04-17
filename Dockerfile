@@ -24,7 +24,7 @@ RUN apk --no-cache add ca-certificates tzdata
 COPY --from=builder /app/main .
 
 # Copy environment template if needed or config structure
-COPY .env .env
+# HAPUS BARIS COPY .env .env KARENA KITA MENGGUNAKAN ENVIRONMENT VARIABEL DINAMIS SAAT RUNTIME
 
 # Expose port
 EXPOSE 8080
