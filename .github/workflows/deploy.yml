@@ -3,7 +3,7 @@ name: Deploy Backend
 on:
   push:
     branches:
-      - main
+      - master
 
 env:
   BACKEND_IMAGE_NAME: ghalitsar/backend-app:v2
