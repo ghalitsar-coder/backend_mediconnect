@@ -37,6 +37,10 @@ func NewAzureBlobService(connectionString string) (BlobService, error) {
 }
 
 func (s *azureBlobService) UploadKTP(ctx context.Context, fileBytes []byte, filename string, contentType string) (string, error) {
+	// Batasi waktu maksimal proses Upload (mencegah request stuck/hanging selamanya)
+	uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
 	// Prefix / key attachment: "uploads"
 	blobName := path.Join("uploads", fmt.Sprintf("%d_%s", time.Now().Unix(), filename))
 
@@ -48,8 +52,11 @@ func (s *azureBlobService) UploadKTP(ctx context.Context, fileBytes []byte, file
 	}
 
 	// 1. Dapatkan referensi container, dan buat bila belum ada, atau abaikan bila sudah ada
-	// Ini bisa di-improve dengan mengecek exists() atau ditaruh waktu init, tapi untuk kemudahan:
-	s.client.CreateContainer(ctx, s.containerName, nil)
+	// Menggunakan Context timeout
+	_, err := s.client.CreateContainer(uploadCtx, s.containerName, nil)
+	if err != nil {
+		fmt.Printf("Warning: Container creation failed or already exists: %v\n", err)
+	}
 
 	// 2. Metadata dummy sesuai request (3-4 metadata yang relevan)
 	metadata := map[string]*string{
@@ -58,7 +65,7 @@ func (s *azureBlobService) UploadKTP(ctx context.Context, fileBytes []byte, file
 		"status":       Ptr("pending_verification"),
 	}
 
-	// 3. Upload file
+	// 3. Upload file (juga memakai uploadCtx)
 	options := &azblob.UploadBufferOptions{
 		Metadata: metadata,
 		HTTPHeaders: &blob.HTTPHeaders{
@@ -66,7 +73,7 @@ func (s *azureBlobService) UploadKTP(ctx context.Context, fileBytes []byte, file
 		},
 	}
 
-	_, err := s.client.UploadBuffer(ctx, s.containerName, blobName, fileBytes, options)
+	_, err = s.client.UploadBuffer(uploadCtx, s.containerName, blobName, fileBytes, options)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload blob: %w", err)
 	}

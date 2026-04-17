@@ -36,6 +36,10 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 
 	booking, err := h.bookingUsecase.CreateBooking(c.Request.Context(), userID, req)
 	if err != nil {
+		if err.Error() == "URL_KTP_REQUIRED" {
+			response.Error(c, http.StatusBadRequest, "Maaf, Anda belum mengunggah KTP. Silakan unggah KTP terlebih dahulu di menu Profil.")
+			return
+		}
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
