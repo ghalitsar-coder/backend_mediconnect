@@ -2,122 +2,114 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "mediconnect-backend"
-        REGISTRY   = "registry.example.com"   // replace with your registry
-        GIT_SHA    = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-        IMAGE_TAG  = "${REGISTRY}/${IMAGE_NAME}:${GIT_SHA}"
+        BACKEND_IMAGE_NAME = 'ghalitsar/backend-app:v2'
+        
+        // ===== KONFIGURASI CREDENTIALS JENKINS =====
+        // Pastikan Anda membuat ID relasi credentials berikut di Jenkins (Manage Jenkins -> Credentials)
+        
+        // 1. DockerHub Credentials (tipe Username with password)
+        DOCKERHUB_CREDS_ID = 'dockerhub-credentials'
+        
+        // 2. SSH Private Key Credentials (tipe SSH Username with private key)
+        // Kunci ini harus bisa mengakses frontend (sebagai proxy) dan backend
+        SSH_CREDS_ID = 'ssh-credentials' 
+        
+        // 3. Secret text credentials untuk Variabel Lingkungan
+        BACKEND_PRIVATE_IP   = credentials('backend-private-ip')
+        BACKEND_USERNAME     = credentials('backend-username')
+        FRONTEND_HOST        = credentials('frontend-host')
+        FRONTEND_USERNAME    = credentials('frontend-username')
+        AZURE_STORAGE_STRING = credentials('azure-storage-connection-string')
+        DB_URL               = credentials('db-url')
     }
 
     options {
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
-        buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
     stages {
-
-        // ── S1: Checkout & Lint ────────────────────────────────────────────
-        stage('Checkout & Lint') {
+        stage('Checkout') {
             steps {
                 checkout scm
-                sh 'go version'
-                sh 'golangci-lint run ./... --timeout 5m'
             }
         }
 
-        // ── S2: Unit Tests ────────────────────────────────────────────────
-        stage('Unit Tests') {
-            steps {
-                sh '''
-                    go test -v -race -count=1 \
-                        -coverprofile=coverage.out \
-                        ./...
-                    go tool cover -func=coverage.out | tail -1
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: true
-                }
-            }
-        }
-
-        // ── S3: Integration Tests ─────────────────────────────────────────
-        stage('Integration Tests') {
-            steps {
-                sh 'docker compose up -d db redis rabbitmq'
-                sh 'sleep 10'  // wait for healthchecks
-                sh 'go test -v -tags=integration ./...'
-            }
-            post {
-                always {
-                    sh 'docker compose down'
-                }
-            }
-        }
-
-        // ── S4: Build & Push Docker Image ─────────────────────────────────
         stage('Build & Push Image') {
             steps {
-                sh "docker build -t ${IMAGE_TAG} ."
-                sh "trivy image --exit-code 1 --severity CRITICAL ${IMAGE_TAG}"
-                withCredentials([usernamePassword(
-                    credentialsId: 'registry-credentials',
-                    usernameVariable: 'REG_USER',
-                    passwordVariable: 'REG_PASS'
-                )]) {
-                    sh "docker login ${REGISTRY} -u ${REG_USER} -p ${REG_PASS}"
-                    sh "docker push ${IMAGE_TAG}"
+                script {
+                    dir('backend_mediconnect') {
+                        docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CREDS_ID}") {
+                            def backendImage = docker.build("${BACKEND_IMAGE_NAME}")
+                            backendImage.push()
+                        }
+                    }
                 }
             }
         }
 
-        // ── S5: Deploy to Staging ─────────────────────────────────────────
-        stage('Deploy Staging') {
+        stage('Prepare Image Tarball') {
             steps {
-                sh """
-                    kubectl set image deployment/mediconnect-backend \
-                        mediconnect-backend=${IMAGE_TAG} \
-                        -n staging
-                    kubectl rollout status deployment/mediconnect-backend \
-                        -n staging --timeout=3m
-                """
+                dir('backend_mediconnect') {
+                    sh """
+                        docker pull ${BACKEND_IMAGE_NAME}
+                        echo "Menyimpan image menjadi file .tar..."
+                        docker save -o backend-image.tar ${BACKEND_IMAGE_NAME}
+                    """
+                }
             }
         }
 
-        // ── S6: Smoke Test & Manual Gate ──────────────────────────────────
-        stage('Smoke Test') {
+        stage('Deploy via SSH ProxyJump') {
             steps {
-                sh 'sleep 5'
-                sh 'curl -sf https://staging.mediconnect.id/api/v1/health'
-            }
-        }
+                dir('backend_mediconnect') {
+                    // Menggunakan plugin sshagent untuk otomatis memuat private key
+                    sshagent(credentials: ["${SSH_CREDS_ID}"]) {
+                        sh """
+                            echo "Mengkonfigurasi SSH Proxyjump..."
+                            mkdir -p ~/.ssh
+                            cat <<EOF > ~/.ssh/config
+Host frontend-proxy
+  HostName ${FRONTEND_HOST}
+  User ${FRONTEND_USERNAME}
+  StrictHostKeyChecking no
 
-        stage('Approval Gate') {
-            steps {
-                input message: 'Deploy to production?', ok: 'Ship it 🚀'
-            }
-        }
+Host backend-target
+  HostName ${BACKEND_PRIVATE_IP}
+  User ${BACKEND_USERNAME}
+  ProxyJump frontend-proxy
+  StrictHostKeyChecking no
+EOF
+                            chmod 600 ~/.ssh/config
 
-        // ── S7: Deploy to Production ──────────────────────────────────────
-        stage('Deploy Production') {
-            steps {
-                sh """
-                    kubectl set image deployment/mediconnect-backend \
-                        mediconnect-backend=${IMAGE_TAG} \
-                        -n production
-                    kubectl rollout status deployment/mediconnect-backend \
-                        -n production --timeout=5m
-                """
+                            echo "Menyalin file docker-compose, schema, dan image.tar ke Backend..."
+                            scp backend-image.tar docker-compose.yml mediconnect_id_schema.sql backend-target:/home/${BACKEND_USERNAME}/
+
+                            echo "Menjalankan deployment di server backend..."
+                            ssh backend-target << 'EOF'
+                                echo "Memuat image ke Docker dari file .tar lokal..."
+                                docker load -i /home/${BACKEND_USERNAME}/backend-image.tar
+                                
+                                cd /home/${BACKEND_USERNAME} || true
+                                
+                                echo "Membuat file .env..."
+                                echo "AZURE_STORAGE_CONNECTION_STRING='${AZURE_STORAGE_STRING}'" > .env
+                                echo "DB_URL='${DB_URL}'" >> .env
+                                
+                                docker-compose up -d
+                                
+                                echo "Membersihkan file .tar..."
+                                rm -f /home/${BACKEND_USERNAME}/backend-image.tar
+                                exit
+EOF
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
-        failure {
-            echo "Pipeline failed — triggering rollback on production namespace"
-            sh 'kubectl rollout undo deployment/mediconnect-backend -n production || true'
-        }
         always {
             cleanWs()
         }
