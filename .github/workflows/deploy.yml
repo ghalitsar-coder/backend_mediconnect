@@ -57,7 +57,12 @@ jobs:
       - name: Deploy Backend via ProxyJump SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          # ... (konfigurasi host, user, key, proxy sama seperti sebelumnya) ...
+          host: ${{ secrets.BACKEND_PRIVATE_IP }}
+          username: ${{ secrets.BACKEND_USERNAME }}
+          key: ${{ secrets.BACKEND_SSH_KEY }}
+          proxy_host: ${{ secrets.FRONTEND_HOST }}
+          proxy_username: ${{ secrets.FRONTEND_USERNAME }}
+          proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
           script: |
             echo "Membuat file .env..."
             cd /home/${{ secrets.BACKEND_USERNAME }} || true
