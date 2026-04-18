@@ -38,6 +38,8 @@ services:
     container_name: mediconnect-backend
     ports:
       - "8080:8080"
+    volumes:
+      - ./.env:/app/.env  
     depends_on:
       - db
       - redis

@@ -68,12 +68,23 @@ jobs:
             # Opsional: Login Docker Hub di VM jika image bersifat private
             # echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             
+            echo "Generating .env file with Heredoc..."
+            # cat <<EOF > .env akan menimpa file lama dan memastikan setiap baris baru benar-benar bersih
+            cat <<EOF > .env
+            APP_ENV=production
+            SERVER_PORT=8080
+            AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+            DB_URL="${{ secrets.DB_URL }}"
+            REDIS_URL=redis:6379
+            RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+            EOF
+
             echo "Pulling image dari Docker Hub..."
             docker pull ${{ env.BACKEND_IMAGE_NAME }}
             
-            echo "Restarting Backend..."
+            echo "Restarting Backend with forced recreate..."
             docker compose down
-            docker compose up -d
+            docker compose up -d --force-recreate
             
-            echo "Membersihkan image lama agar disk tidak penuh..."
+            echo "Cleaning up old images..."
             docker image prune -f
