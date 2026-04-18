@@ -50,6 +50,11 @@ func (h *UploadHandler) UploadKTP(c *gin.Context) {
 	contentType := header.Header.Get("Content-Type")
 
 	// Panggil service untuk upload ke blob
+	if h.blobService == nil {
+		response.Error(c, http.StatusInternalServerError, "Layanan penyimpanan awan sedang mengalami gangguan internal (Service Unavailable)")
+		return
+	}
+
 	url, err := h.blobService.UploadKTP(c.Request.Context(), fileBytes, header.Filename, contentType)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "Gagal melakukan proses upload ke Azure Blob Storage - "+err.Error())

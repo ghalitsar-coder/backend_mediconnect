@@ -60,8 +60,10 @@ jobs:
           script: |
             echo "Membuat file .env..."
             cd /home/${{ secrets.BACKEND_USERNAME }} || true
-            echo 'AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"' > .env
-            echo 'DB_URL="${{ secrets.DB_URL }}"' >> .env
+            cat <<EOF > .env
+            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            DB_URL=${{ secrets.DB_URL }}
+            EOF
             
             # Opsional: Login Docker Hub di VM jika image bersifat private
             # echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
