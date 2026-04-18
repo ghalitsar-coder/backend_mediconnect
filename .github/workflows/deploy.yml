@@ -35,12 +35,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Pull image from Docker Hub (on GitHub Runner)
-        run: |
-          docker pull ${{ env.BACKEND_IMAGE_NAME }}
-          echo "Menyimpan image menjadi file .tar..."
-          docker save -o backend-image.tar ${{ env.BACKEND_IMAGE_NAME }}
-
       - name: Copy Files to Backend via ProxyJump
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -51,7 +45,7 @@ jobs:
           proxy_username: ${{ secrets.FRONTEND_USERNAME }}
           proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
           # Karena file docker-compose ada di root repo backend
-          source: "backend-image.tar,docker-compose.yml,mediconnect_id_schema.sql"
+          source: "docker-compose.yml,mediconnect_id_schema.sql"
           target: "/home/${{ secrets.BACKEND_USERNAME }}/"
 
       - name: Deploy Backend via ProxyJump SSH
