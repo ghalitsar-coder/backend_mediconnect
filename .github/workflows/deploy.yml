@@ -73,8 +73,8 @@ jobs:
             cat <<EOF > .env
             APP_ENV=production
             SERVER_PORT=8080
-            AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
-            DB_URL="${{ secrets.DB_URL }}"
+            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+            DB_URL=${{ secrets.DB_URL }}
             REDIS_URL=redis:6379
             RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
             EOF
