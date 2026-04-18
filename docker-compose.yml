@@ -42,9 +42,9 @@ services:
       - db
       - redis
       - rabbitmq
+    env_file:
+      - .env
     environment:
-      - DB_URL=${DB_URL}
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
     restart: unless-stopped
