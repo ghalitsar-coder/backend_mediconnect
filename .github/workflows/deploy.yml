@@ -57,24 +57,22 @@ jobs:
       - name: Deploy Backend via ProxyJump SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.BACKEND_PRIVATE_IP }}
-          username: ${{ secrets.BACKEND_USERNAME }}
-          key: ${{ secrets.BACKEND_SSH_KEY }}
-          proxy_host: ${{ secrets.FRONTEND_HOST }}
-          proxy_username: ${{ secrets.FRONTEND_USERNAME }}
-          proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
+          # ... (konfigurasi host, user, key, proxy sama seperti sebelumnya) ...
           script: |
-            echo "Memuat image ke Docker dari file .tar lokal..."
-            docker load -i /home/${{ secrets.BACKEND_USERNAME }}/backend-image.tar
-            
-            echo "Restarting Backend..."
-            cd /home/${{ secrets.BACKEND_USERNAME }} || true
-            
             echo "Membuat file .env..."
+            cd /home/${{ secrets.BACKEND_USERNAME }} || true
             echo 'AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"' > .env
             echo 'DB_URL="${{ secrets.DB_URL }}"' >> .env
             
+            # Opsional: Login Docker Hub di VM jika image bersifat private
+            # echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            
+            echo "Pulling image dari Docker Hub..."
+            docker pull ${{ env.BACKEND_IMAGE_NAME }}
+            
+            echo "Restarting Backend..."
+            docker compose down
             docker compose up -d
             
-            echo "Membersihkan file .tar..."
-            rm /home/${{ secrets.BACKEND_USERNAME }}/backend-image.tar
+            echo "Membersihkan image lama agar disk tidak penuh..."
+            docker image prune -f

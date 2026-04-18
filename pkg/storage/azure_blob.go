@@ -22,7 +22,7 @@ type azureBlobService struct {
 func NewAzureBlobService(connectionString string) (BlobService, error) {
 	// Untuk demo, jika dummy string diberikan, kita return struct yang "berpura-pura" sukses
 	if connectionString == "" || connectionString == "DefaultEndpointsProtocol=https;AccountName=dummy;AccountKey=dummy;EndpointSuffix=core.windows.net" {
-		return &azureBlobService{client: nil, containerName: "blobhghal2026"}, nil
+		return &azureBlobService{client: nil, containerName: "attachments"}, nil
 	}
 
 	client, err := azblob.NewClientFromConnectionString(connectionString, nil)
@@ -32,7 +32,7 @@ func NewAzureBlobService(connectionString string) (BlobService, error) {
 
 	return &azureBlobService{
 		client:        client,
-		containerName: "blobhghal2026",
+		containerName: "attachments",
 	}, nil
 }
 

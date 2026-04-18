@@ -48,6 +48,7 @@ type AuthResponse struct {
 type AuthUsecase interface {
 	Register(ctx context.Context, req RegisterRequest) (User, error)
 	Login(ctx context.Context, req LoginRequest) (User, error) // Returns JWT token and User info
+	GetUserByID(ctx context.Context, userID string) (User, error)
 }
 
 // AuthRepository defines the interface for user data operations

@@ -69,3 +69,11 @@ func (u *AuthUsecase) Login(ctx context.Context, req domain.LoginRequest) (domai
     // Tidak membuat token di sini, token dibuat di handler
     return *user, nil
 }
+
+func (u *AuthUsecase) GetUserByID(ctx context.Context, userID string) (domain.User, error) {
+    user, err := u.authRepo.GetUserByID(ctx, userID)
+    if err != nil {
+        return domain.User{}, err
+    }
+    return *user, nil
+}

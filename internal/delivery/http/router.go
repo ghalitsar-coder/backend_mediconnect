@@ -59,6 +59,7 @@ func SetupRouter(
 
 			// Upload KTP
 			protected.POST("/uploads/ktp", uploadHandler.UploadKTP)
+			protected.GET("/auth/me", authHandler.GetMe)
 		}
 	}
 
