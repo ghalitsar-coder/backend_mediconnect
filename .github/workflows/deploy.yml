@@ -27,6 +27,10 @@ jobs:
       - name: Deploying Healthcare App
         run: |
           echo "Building and deploying application..."
+          
+          # Hapus container lama (dari metode SSH manual) yang bikin bentrok nama
+          docker rm -f mediconnect-backend mediconnect-db mediconnect-redis mediconnect-rabbitmq || true
+          
           docker compose down
           docker compose up -d --build --force-recreate
           

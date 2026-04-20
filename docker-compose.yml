@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16
@@ -34,7 +32,8 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghalitsar/backend-app:v2
+    build: .
+    image: mediconnect-backend:local
     container_name: mediconnect-backend
     ports:
       - "8080:8080"
