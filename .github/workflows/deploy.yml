@@ -5,86 +5,30 @@ on:
     branches:
       - master
 
-env:
-  BACKEND_IMAGE_NAME: ghalitsar/backend-app:v2
-
 jobs:
-  build-and-push-backend:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Create .env file
+        run: |
+          echo "Generating .env file..."
+          cat <<EOF > .env
+          APP_ENV=production
+          SERVER_PORT=8080
+          AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          DB_URL=${{ secrets.DB_URL }}
+          REDIS_URL=redis:6379
+          RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+          EOF
 
-      - name: Build and push Backend Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.BACKEND_IMAGE_NAME }}
-
-  deploy-backend:
-    needs: build-and-push-backend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Copy Files to Backend via ProxyJump
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.BACKEND_PRIVATE_IP }}
-          username: ${{ secrets.BACKEND_USERNAME }}
-          key: ${{ secrets.BACKEND_SSH_KEY }}
-          proxy_host: ${{ secrets.FRONTEND_HOST }}
-          proxy_username: ${{ secrets.FRONTEND_USERNAME }}
-          proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
-          # Karena file docker-compose ada di root repo backend
-          source: "docker-compose.yml,mediconnect_id_schema.sql"
-          target: "/home/${{ secrets.BACKEND_USERNAME }}/"
-
-      - name: Deploy Backend via ProxyJump SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.BACKEND_PRIVATE_IP }}
-          username: ${{ secrets.BACKEND_USERNAME }}
-          key: ${{ secrets.BACKEND_SSH_KEY }}
-          proxy_host: ${{ secrets.FRONTEND_HOST }}
-          proxy_username: ${{ secrets.FRONTEND_USERNAME }}
-          proxy_key: ${{ secrets.FRONTEND_SSH_KEY }}
-          script: |
-            echo "Membuat file .env..."
-            cd /home/${{ secrets.BACKEND_USERNAME }} || true
-            cat <<EOF > .env
-            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-            DB_URL=${{ secrets.DB_URL }}
-            EOF
-            
-            # Opsional: Login Docker Hub di VM jika image bersifat private
-            # echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            
-            echo "Generating .env file with Heredoc..."
-            # cat <<EOF > .env akan menimpa file lama dan memastikan setiap baris baru benar-benar bersih
-            cat <<EOF > .env
-            APP_ENV=production
-            SERVER_PORT=8080
-            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-            DB_URL=${{ secrets.DB_URL }}
-            REDIS_URL=redis:6379
-            RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-            EOF
-
-            echo "Pulling image dari Docker Hub..."
-            docker pull ${{ env.BACKEND_IMAGE_NAME }}
-            
-            echo "Restarting Backend with forced recreate..."
-            docker compose down
-            docker compose up -d --force-recreate
-            
-            echo "Cleaning up old images..."
-            docker image prune -f
+      - name: Deploying Healthcare App
+        run: |
+          echo "Building and deploying application..."
+          docker compose down
+          docker compose up -d --build --force-recreate
+          
+          echo "Cleaning up old images..."
+          docker image prune -f
