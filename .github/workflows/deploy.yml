@@ -5,8 +5,31 @@ on:
     branches:
       - master
 
+env:
+  BACKEND_IMAGE_NAME: ghalitsar/backend-app:v2
+
 jobs:
+  build-and-push-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.BACKEND_IMAGE_NAME }}
+
   deploy:
+    needs: build-and-push-backend
     runs-on: self-hosted
     steps:
       - name: Checkout repository
@@ -26,13 +49,15 @@ jobs:
 
       - name: Deploying Healthcare App
         run: |
-          echo "Building and deploying application..."
+          echo "Pulling latest image and deploying..."
           
           # Hapus container lama (dari metode SSH manual) yang bikin bentrok nama
           docker rm -f mediconnect-backend mediconnect-db mediconnect-redis mediconnect-rabbitmq || true
           
+          docker pull ${{ env.BACKEND_IMAGE_NAME }}
+          
           docker compose down
-          docker compose up -d --build --force-recreate
+          docker compose up -d --force-recreate
           
           echo "Cleaning up old images..."
           docker image prune -f

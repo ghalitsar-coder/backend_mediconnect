@@ -32,8 +32,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build: .
-    image: mediconnect-backend:local
+    image: ghalitsar/backend-app:v2
     container_name: mediconnect-backend
     ports:
       - "8080:8080"
